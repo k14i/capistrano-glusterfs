@@ -68,7 +68,7 @@ $ vi ./config/deploy/staging.rb
 ### Show usage
 
 `````bash
-$ bundle exec cap -vT | grep -i glusterfs
+$ bundle exec cap -vT | grep -i gluster
 `````
 
 ### Start deployment with the staging configuration

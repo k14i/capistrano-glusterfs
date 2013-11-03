@@ -2,7 +2,7 @@ namespace :glusterd do
 
   desc "Start glusterd"
   task :start do
-    on roles(:glusterd), in: :sequence, wait: 5 do
+    on roles(:glusterd), in: :parallel, wait: 5 do
       begin
         execute "sudo -i /sbin/service glusterd start"
       rescue => ex
@@ -13,7 +13,7 @@ namespace :glusterd do
 
   desc "Stop glusterd"
   task :stop do
-    on roles(:glusterd), in: :sequence, wait: 5 do
+    on roles(:glusterd), in: :parallel, wait: 5 do
       begin
         execute "sudo -i /sbin/service glusterd stop"
       rescue => ex
@@ -24,7 +24,7 @@ namespace :glusterd do
 
   desc "Restart glusterd"
   task :restart do
-    on roles(:glusterd), in: :sequence, wait: 5 do
+    on roles(:glusterd), in: :parallel, wait: 5 do
       begin
         execute "sudo -i /sbin/service glusterd restart"
       rescue => ex
@@ -35,7 +35,7 @@ namespace :glusterd do
 
   desc "Get the status of glusterd"
   task :status do
-    on roles(:glusterd), in: :sequence, wait: 5 do
+    on roles(:glusterd), in: :parallel, wait: 5 do
       begin
         execute "sudo -i /sbin/service glusterd status"
       rescue => ex
