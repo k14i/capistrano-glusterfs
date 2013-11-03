@@ -20,14 +20,19 @@ You can install the latest master version of GlusterFS in parallel.
 * Sshd is running and publickey authentication is enabled between the users on the executing node and the targetted nodes. (Some cloud services are supported as default.)
 * The user on each targetted node is enable to run sudo without a password. (Some cloud services are supported as default.)
 
+#### Pre-execution procedure
+
 `````bash
 # user="deploy"
 # useradd -g root -G wheel $user
 # passwd $user
 # visudo
+# egrep '^%wheel.*NOPASSWD' /etc/sudoers
 # chmod 775 /usr/local/src
-# yum install -y openssh-clients git
+# yum install -y openssh-clients
 # su - $user
+$ echo 'export PATH=$PATH:/bin:/usr/bin' >> ~/.bashrc
+$ source ~/.bashrc
 $ mkdir -p ~/.ssh -m 700
 $ mv id_rsa authorized_keys ~/.ssh/
 $ chmod 600 ~/.ssh/{authorized_keys,id_rsa}

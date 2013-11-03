@@ -18,7 +18,7 @@ set :ssh_options, {
 }
 
 namespace :deploy do
-  after :started, "deploy:preparation"
+  before :starting, "deploy:preparation"
   after :preparation, "deploy:dependancies"
   after :published, "deploy:glusterfs"
 

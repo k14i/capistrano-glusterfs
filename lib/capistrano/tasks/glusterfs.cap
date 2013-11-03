@@ -3,7 +3,9 @@ namespace :deploy do
   desc "Prepare installing GlusterFS"
   task :preparation do
     on roles(:glusterfs), in: :sequence, wait: 5 do
-      execute "sudo yum reinstall -y wget git yum-priorities"
+      execute "echo 'export PATH=$PATH:/bin:/usr/bin' >> ~/.bashrc" unless test "/bin/egrep '/bin' ~/.bashrc > /dev/null; exit $?"
+
+      execute "sudo yum install -y wget git yum-priorities"
       %w[
         http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
         http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
@@ -13,7 +15,7 @@ namespace :deploy do
           rpm = uri.gsub(/(#{uri.gsub(/[^\/]+$/, "")})/, "")
           execute "wget #{uri} && sudo rpm -Uvh #{rpm} ; rm -f #{rpm}*"
         rescue => ex
-          puts ex
+          execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{@@install_log}"
         end
       end
       repo = "/etc/yum.repos.d/remi.repo"
@@ -31,7 +33,7 @@ namespace :deploy do
       ].each do |repo|
         file = "/etc/yum.repos.d/" + repo[:name] + ".repo"
         if test("[ -f #{file} ]")
-          next if test "egrep 'priority=[0-9]+' #{file} > /dev/null; return $?"
+          next if test "egrep 'priority=[0-9]+' #{file} > /dev/null; exit $?"
           execute "sudo sed -i \"s/name\=/priority=#{repo[:priority]}\\nname\=/g\" #{file}"
         end
       end
@@ -71,14 +73,14 @@ namespace :deploy do
       begin
         execute "sudo yum -y update --enablerepo=rpmforge-extras --skip-broken"
       rescue => ex
-        puts ex
+        execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{@@install_log}"
       end
 
       %w[ rsync python-ctypes ].each do |rpm|
         begin
-          execute "sudo yum -y reinstall --enablerepo=rpmforge-extras #{rpm}"
+          execute "sudo yum -y install --enablerepo=rpmforge-extras #{rpm}"
         rescue => ex
-          puts ex
+          execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{@@install_log}"
         end
       end
 
@@ -114,11 +116,11 @@ namespace :deploy do
     on roles(:glusterfs), in: :sequence, wait: 5 do
       [
         {
-          :text => 'export PATH=\$PATH:/usr/local/glusterfs/sbin',
+          :text => 'export PATH=$PATH:/usr/local/glusterfs/sbin',
           :target => '~/.bashrc',
         },
         {
-          :text => 'export MANPATH=\$MANPATH:/usr/local/glusterfs/share/man',
+          :text => 'export MANPATH=$MANPATH:/usr/local/glusterfs/share/man',
           :target => '~/.bashrc',
         },
         {
@@ -128,17 +130,44 @@ namespace :deploy do
       ].each do |e|
         begin
           execute "sudo touch #{e[:target]}" unless test("[ -f #{e[:target]} ]")
-          ret = execute "sudo grep '#{e[:text]}' #{e[:target]}; return $?"
-        rescue => ex
-          puts ex
+          ret = test "sudo grep '#{e[:text]}' #{e[:target]} > /dev/null; exit $?"
           execute "echo '#{e[:text]}' | sudo tee -a #{e[:target]}" unless ret
+        rescue => ex
+          execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{@@install_log}"
         end
       end
 
-      execute "sudo /sbin/ldconfig"
-      execute "sudo sed -i 's/SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config"
-      execute "sudo /sbin/chkconfig iptables off"
-      execute "sudo /sbin/service iptables stop"
+      begin
+        execute "sudo /sbin/ldconfig"
+        execute "sudo sed -i 's/SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config"
+        execute "sudo /sbin/chkconfig iptables off"
+        execute "sudo /sbin/service iptables stop"
+        execute "sudo /sbin/chkconfig --add glusterd" unless test "sudo chkconfig --list | grep gluster > /dev/null; exit $?"
+      rescue => ex
+        execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{@@install_log}"
+      end
+
+    end
+  end
+
+  desc "Start GlusterFS"
+  task :start_glusterfs do
+    on roles(:glusterfs), in: :sequence, wait: 5 do
+      execute "sudo /sbin/service glusterd start"
+    end
+  end
+
+  desc "Stop GlusterFS"
+  task :stop_glusterfs do
+    on roles(:glusterfs), in: :sequence, wait: 5 do
+      execute "sudo /sbin/service glusterd stop"
+    end
+  end
+
+  desc "Restart GlusterFS"
+  task :restart_glusterfs do
+    on roles(:glusterfs), in: :sequence, wait: 5 do
+      execute "sudo /sbin/service glusterd restart"
     end
   end
 
@@ -146,11 +175,17 @@ namespace :deploy do
   task :glusterfs do
     @@dir = fetch(:deploy_to) + "/current"
     @@install_path = "/usr/local/glusterfs-current"
+    @@install_log = "~/capistrano-glusterfs.log"
+    on roles(:glusterfs), in: :sequence, wait: 5 do
+      execute "echo | tee #{@@install_log}"
+    end
+
     # invoke "deploy:preparation"
     # invoke "deploy:dependancies"
     invoke "deploy:compile"
     invoke "deploy:make_install"
     invoke "deploy:configuration"
+    invoke "deploy:start_glusterfs"
   end
 
 end
