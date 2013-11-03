@@ -1,0 +1,17 @@
+set :stage, :staging
+set :branch, "master"
+
+server '', roles: %w(glusterfs), user: ''
+
+## NOTE: You can do deployment at the same time with a publickey defined in deploy.rb.
+# server '192.0.2.1', roles: %w(glusterfs), user: 'deploy'
+# server '192.0.2.2', roles: %w(glusterfs), user: 'deploy'
+# server '192.0.2.3', roles: %w(glusterfs), user: 'deploy'
+
+## NOTE: Also you can do it specifying a publickey for each node.
+# server 'some-aws-ec2-instance.example.com', roles: %w(glusterfs), user: 'ec2-user', ssh_options: {
+#   keys: [File.expand_path('~/.ssh/some-aws-ec2-instance.pem')]
+# }
+# server 'some-cloudn-compute-instance.example.com', roles: %w(glusterfs), user: 'cloudn', ssh_options: {
+#   keys: [File.expand_path('~/.ssh/some-cloudn-compute-instance.pem')]
+# }

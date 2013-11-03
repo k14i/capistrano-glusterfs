@@ -1,0 +1,156 @@
+namespace :deploy do
+
+  desc "Prepare installing GlusterFS"
+  task :preparation do
+    on roles(:glusterfs), in: :sequence, wait: 5 do
+      execute "sudo yum reinstall -y wget git yum-priorities"
+      %w[
+        http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
+        http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+        http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+      ].each do |uri|
+        begin
+          rpm = uri.gsub(/(#{uri.gsub(/[^\/]+$/, "")})/, "")
+          execute "wget #{uri} && sudo rpm -Uvh #{rpm} ; rm -f #{rpm}*"
+        rescue => ex
+          puts ex
+        end
+      end
+      repo = "/etc/yum.repos.d/remi.repo"
+      execute "sudo sed -i s/enabled=0/enabled=1/ #{repo}" if test("[ -f #{repo} ]")
+
+      [
+        { :name => "CentOS-Base", :priority => 5 },
+        { :name => "CentOS-Media", :priority => 7 },
+        { :name => "CentOS-Debuginfo", :priority => 6 },
+        { :name => "CentOS-Vault", :priority => 9 },
+        { :name => "rpmforge", :priority => 1 },
+        { :name => "epel", :priority => 2 },
+        { :name => "epel-testing", :priority => 10 },
+        { :name => "remi", :priority => 3 },
+      ].each do |repo|
+        file = "/etc/yum.repos.d/" + repo[:name] + ".repo"
+        if test("[ -f #{file} ]")
+          next if test "egrep 'priority=[0-9]+' #{file} > /dev/null; return $?"
+          execute "sudo sed -i \"s/name\=/priority=#{repo[:priority]}\\nname\=/g\" #{file}"
+        end
+      end
+
+    end
+  end
+
+  desc "Install GlusterFS dependancies"
+  task :dependancies do
+    on roles(:glusterfs), in: :sequence, wait: 5 do
+      targets = ""
+      dependancies = %w[
+        openssh-clients
+        make
+        rpm-build
+        bison
+        flex
+        automake
+        libtool
+        ncurses-devel
+        readline-devel
+        openssl-devel
+        libxml2-devel
+        libibverbs-devel
+        libacl-devel
+        libattr-devel
+        python-devel
+        python-setuptools
+        lvm2-devel
+        systemtap-sdt-devel
+        libaio-devel
+        xfsprogs
+      ]
+      dependancies.each do |d| targets = targets + " " + d end
+      execute "sudo yum install -y #{targets}"
+
+      begin
+        execute "sudo yum -y update --enablerepo=rpmforge-extras --skip-broken"
+      rescue => ex
+        puts ex
+      end
+
+      %w[ rsync python-ctypes ].each do |rpm|
+        begin
+          execute "sudo yum -y reinstall --enablerepo=rpmforge-extras #{rpm}"
+        rescue => ex
+          puts ex
+        end
+      end
+
+    end
+  end
+
+  desc "Compile GlusterFS"
+  task :compile do
+    on roles(:glusterfs), in: :sequence, wait: 5 do
+      execute "cd #{@@dir}; sh ./autogen.sh"
+      execute "cd #{@@dir}; sh ./configure \
+        --prefix=#{@@install_path} \
+        --enable-bd-xlator \
+        --enable-fusermount \
+        --enable-systemtap \
+        --enable-debug"
+      execute "cd #{@@dir}; make"
+    end
+  end
+
+  desc "Install GlusterFS"
+  task :make_install do
+    on roles(:glusterfs), in: :sequence, wait: 5 do
+      execute "cd #{@@dir}; sudo make install"
+      symlink = "/usr/local/glusterfs"
+      execute "sudo rm -f #{symlink}" if test("[ -L #{symlink} ]")
+      execute "sudo ln -sf #{@@install_path} #{symlink}"
+    end
+  end
+
+  desc "GlusterFS related configurations"
+  task :configuration do
+    on roles(:glusterfs), in: :sequence, wait: 5 do
+      [
+        {
+          :text => 'export PATH=\$PATH:/usr/local/glusterfs/sbin',
+          :target => '~/.bashrc',
+        },
+        {
+          :text => 'export MANPATH=\$MANPATH:/usr/local/glusterfs/share/man',
+          :target => '~/.bashrc',
+        },
+        {
+          :text => '/usr/local/glusterfs/lib',
+          :target => '/etc/ld.so.conf.d/glusterfs.conf',
+        },
+      ].each do |e|
+        begin
+          execute "sudo touch #{e[:target]}" unless test("[ -f #{e[:target]} ]")
+          ret = execute "sudo grep '#{e[:text]}' #{e[:target]}; return $?"
+        rescue => ex
+          puts ex
+          execute "echo '#{e[:text]}' | sudo tee -a #{e[:target]}" unless ret
+        end
+      end
+
+      execute "sudo /sbin/ldconfig"
+      execute "sudo sed -i 's/SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config"
+      execute "sudo /sbin/chkconfig iptables off"
+      execute "sudo /sbin/service iptables stop"
+    end
+  end
+
+  desc "Starting installation"
+  task :glusterfs do
+    @@dir = fetch(:deploy_to) + "/current"
+    @@install_path = "/usr/local/glusterfs-current"
+    # invoke "deploy:preparation"
+    # invoke "deploy:dependancies"
+    invoke "deploy:compile"
+    invoke "deploy:make_install"
+    invoke "deploy:configuration"
+  end
+
+end

@@ -16,3 +16,17 @@ tmp
 .yardoc
 _yardoc
 doc/
+
+*\#*
+*~
+*.swp
+*.log
+GPATH
+GRTAGS
+GTAGS
+tags
+
+Capfile
+/config/deploy.rb
+/config/deploy/production.rb
+/config/deploy/staging.rb
