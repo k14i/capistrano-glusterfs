@@ -117,23 +117,25 @@ namespace :deploy do
       [
         {
           :text => 'export PATH=$PATH:/usr/local/glusterfs/sbin',
-          :target => '~/.bashrc',
+          :targets => ["~/.bashrc", "/root/.bashrc"],
         },
         {
           :text => 'export MANPATH=$MANPATH:/usr/local/glusterfs/share/man',
-          :target => '~/.bashrc',
+          :targets => ["~/.bashrc", "/root/.bashrc"],
         },
         {
           :text => '/usr/local/glusterfs/lib',
-          :target => '/etc/ld.so.conf.d/glusterfs.conf',
+          :targets => ["/etc/ld.so.conf.d/glusterfs.conf"],
         },
       ].each do |e|
-        begin
-          execute "sudo touch #{e[:target]}" unless test("[ -f #{e[:target]} ]")
-          ret = test "sudo grep '#{e[:text]}' #{e[:target]} > /dev/null; exit $?"
-          execute "echo '#{e[:text]}' | sudo tee -a #{e[:target]}" unless ret
-        rescue => ex
-          execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{@@install_log}"
+        e[:targets].each do |t|
+          begin
+            execute "sudo touch #{t}" unless test("[ -f #{t} ]")
+            ret = test "sudo grep '#{e[:text]}' #{t} > /dev/null; exit $?"
+            execute "echo '#{e[:text]}' | sudo tee -a #{t}" unless ret == true
+          rescue => ex
+            execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{@@install_log}"
+          end
         end
       end
 
@@ -153,21 +155,33 @@ namespace :deploy do
   desc "Start GlusterFS"
   task :start_glusterfs do
     on roles(:glusterfs), in: :sequence, wait: 5 do
-      execute "sudo /sbin/service glusterd start"
+      begin
+        execute "sudo /sbin/service glusterd start"
+      rescue => ex
+        execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{@@install_log}"
+      end
     end
   end
 
   desc "Stop GlusterFS"
   task :stop_glusterfs do
     on roles(:glusterfs), in: :sequence, wait: 5 do
-      execute "sudo /sbin/service glusterd stop"
+      begin
+        execute "sudo /sbin/service glusterd stop"
+      rescue => ex
+        execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{@@install_log}"
+      end
     end
   end
 
   desc "Restart GlusterFS"
   task :restart_glusterfs do
     on roles(:glusterfs), in: :sequence, wait: 5 do
-      execute "sudo /sbin/service glusterd restart"
+      begin
+        execute "sudo /sbin/service glusterd restart"
+      rescue => ex
+        execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{@@install_log}"
+      end
     end
   end
 
