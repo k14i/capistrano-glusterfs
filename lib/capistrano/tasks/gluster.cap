@@ -1,0 +1,92 @@
+namespace :gluster do
+
+  namespace :pool do
+
+    desc "list all the nodes in the pool (including localhost)"
+    task :list do
+      on roles(:gluster), in: :parallel, wait: 5 do
+        begin
+          execute "sudo -i gluster pool list"
+        rescue => ex
+          execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{CLI_LOG}"
+        end
+      end
+    end
+
+  end
+
+  namespace :peer do
+
+    desc "list status of peers"
+    task :status do
+      on roles(:gluster), in: :parallel, wait: 5 do
+        begin
+          execute "sudo -i gluster peer status"
+        rescue => ex
+          execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{CLI_LOG}"
+        end
+      end
+    end
+
+    desc "Help command for peer"
+    task :help do
+      on roles(:gluster), in: :parallel, wait: 5 do
+        begin
+          execute "sudo -i gluster peer help"
+        rescue => ex
+          execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{CLI_LOG}"
+        end
+      end
+    end
+
+  end
+
+  namespace :volume do
+
+    desc "list information of all volumes"
+    task :info do
+      on roles(:gluster), in: :parallel, wait: 5 do
+        begin
+          execute "sudo -i gluster volume info"
+        rescue => ex
+          execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{CLI_LOG}"
+        end
+      end
+    end
+
+    desc "display help for the volume command"
+    task :help do
+      on roles(:gluster), in: :parallel, wait: 5 do
+        begin
+          execute "sudo -i gluster volume help"
+        rescue => ex
+          execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{CLI_LOG}"
+        end
+      end
+    end
+
+    desc "display status of all or specified volume(s)/brick"
+    task :status do
+      on roles(:gluster), in: :parallel, wait: 5 do
+        begin
+          execute "sudo -i gluster volume status"
+        rescue => ex
+          execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{CLI_LOG}"
+        end
+      end
+    end
+
+    desc "list all volumes in cluster"
+    task :list do
+      on roles(:gluster), in: :parallel, wait: 5 do
+        begin
+          execute "sudo -i gluster volume list"
+        rescue => ex
+          execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{CLI_LOG}"
+        end
+      end
+    end
+
+  end
+
+end

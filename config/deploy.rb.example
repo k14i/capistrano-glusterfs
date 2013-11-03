@@ -18,18 +18,24 @@ set :ssh_options, {
 }
 
 namespace :deploy do
-  before :starting, "deploy:preparation"
-  after :preparation, "deploy:dependancies"
-  after :published, "deploy:glusterfs"
+  DIR = fetch(:deploy_to) + "/current"
+  INSTALL_PATH = "/usr/local/glusterfs-current"
+  INSTALL_LOG = "~/capistrano-glusterfs.log"
+  INIT_LOG = "~/capistrano-glusterd.log"
+  CLI_LOG = "~/capistrano-gluster.log"
+
+  before :starting, "glusterfs:preparation"
+  after "glusterfs:preparation", "glusterfs:dependancies"
+  after :published, "glusterfs:build"
 
   desc 'Restart application'
   task :restart do
-    on roles(:app), in: :sequence, wait: 5 do
+    on roles(:glusterfs), in: :sequence, wait: 5 do
     end
   end
 
   after :restart, :clear_cache do
-    on roles(:web), in: :groups, limit: 3, wait: 10 do
+    on roles(:glusterfs), in: :groups, limit: 3, wait: 10 do
     end
   end
 
