@@ -3,7 +3,7 @@ capistrano-glusterfs
 
 A Capistrano 3 recipie for deploying GlusterFS.
 
-You can install the latest master version of GlusterFS in parallel.
+You can install the latest master version of GlusterFS concurrently.
 
 
 ## Glossary
