@@ -2,7 +2,7 @@ namespace :glusterfs do
 
   desc "Prepare installing GlusterFS"
   task :preparation do
-    on roles(:glusterfs), in: :sequence, wait: 5 do
+    on roles(:glusterfs), in: :parallel, wait: 5 do
       execute "echo 'export PATH=$PATH:/bin:/usr/bin' >> ~/.bashrc" unless test "/bin/egrep '/bin' ~/.bashrc > /dev/null; exit $?"
 
       execute "sudo -i yum install -y wget git yum-priorities"
@@ -43,7 +43,7 @@ namespace :glusterfs do
 
   desc "Install GlusterFS dependancies"
   task :dependancies do
-    on roles(:glusterfs), in: :sequence, wait: 5 do
+    on roles(:glusterfs), in: :parallel, wait: 5 do
       targets = ""
       dependancies = %w[
         openssh-clients
@@ -89,7 +89,7 @@ namespace :glusterfs do
 
   desc "Compile GlusterFS"
   task :compile do
-    on roles(:glusterfs), in: :sequence, wait: 5 do
+    on roles(:glusterfs), in: :parallel, wait: 5 do
       execute "cd #{DIR}; sh ./autogen.sh"
       execute "cd #{DIR}; sh ./configure \
         --prefix=#{INSTALL_PATH} \
@@ -103,17 +103,17 @@ namespace :glusterfs do
 
   desc "Install GlusterFS"
   task :make_install do
-    on roles(:glusterfs), in: :sequence, wait: 5 do
+    on roles(:glusterfs), in: :parallel, wait: 5 do
       execute "cd #{DIR}; sudo make install"
       symlink = "/usr/local/glusterfs"
       execute "sudo -i rm -f #{symlink}" if test("[ -L #{symlink} ]")
-      execute "sudo -i ln -sf #{INSTALL_PATH} #{symlink}"
+      execute "sudo -i ln -snf #{INSTALL_PATH} #{symlink}"
     end
   end
 
   desc "GlusterFS related configurations"
   task :configuration do
-    on roles(:glusterfs), in: :sequence, wait: 5 do
+    on roles(:glusterfs), in: :parallel, wait: 5 do
       [
         {
           :text => 'export PATH=$PATH:/usr/local/glusterfs/sbin',
@@ -145,6 +145,7 @@ namespace :glusterfs do
         execute "sudo -i /sbin/chkconfig iptables off"
         execute "sudo -i /sbin/service iptables stop"
         execute "sudo -i /sbin/chkconfig --add glusterd" unless test "sudo -i chkconfig --list | grep gluster > /dev/null; exit $?"
+        execute "sudo -i /sbin/chkconfig --level 35 glusterd on"
       rescue => ex
         execute "echo '#{Time.now}: #{__LINE__}: #{ex}' | tee -a #{INSTALL_LOG}"
       end
@@ -154,7 +155,7 @@ namespace :glusterfs do
 
   desc "Starting installation"
   task :build do
-    on roles(:glusterfs), in: :sequence, wait: 5 do
+    on roles(:glusterfs), in: :parallel, wait: 5 do
       execute "echo | tee #{INSTALL_LOG}"
     end
 
